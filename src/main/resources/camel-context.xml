@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:spring-security="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="
+         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+         http://camel.apache.org/schema/spring-security http://camel.apache.org/schema/spring-security/camel-spring-security.xsd
+         http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd">
+
+	<camelContext id="jasonsExampleContext" xmlns="http://camel.apache.org/schema/spring">
+
+		<!-- Put files onto a JMS queue -->
+		<route id="dir2Jms">
+			<from uri="file:///tmp/in" />
+			<convertBodyTo type="java.lang.String" />
+			<to uri="activemq:queue:filesinputqueue" />
+		</route>
+
+		<!-- Put JMS messages into a directory -->
+		<route id="jms2Dir">
+			<from uri="activemq:queue:filesinputqueue" />
+			<to uri="file:///tmp/out" />
+		</route>
+
+	</camelContext>
+
+	<!-- The following sets up an embedded JMS with ActiveMQ -->
+	<bean id="jmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL" value="vm://localhost" />
+	</bean>
+
+	<bean id="pooledConnectionFactory" class="org.apache.activemq.pool.PooledConnectionFactory"
+		init-method="start" destroy-method="stop">
+		<property name="maxConnections" value="8" />
+		<property name="connectionFactory" ref="jmsConnectionFactory" />
+	</bean>
+
+	<bean id="jmsConfig" class="org.apache.camel.component.jms.JmsConfiguration">
+		<property name="connectionFactory" ref="pooledConnectionFactory" />
+		<property name="concurrentConsumers" value="10" />
+	</bean>
+
+	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
+		<property name="configuration" ref="jmsConfig" />
+	</bean>
+	<!-- End of embedded ActiveMQ JMS -->
+
+</beans>
